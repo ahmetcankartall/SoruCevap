@@ -1,0 +1,969 @@
+ARTİCLESCONTROLLER.TS:
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SoruCevapCore.API.Models;
+using SoruCevapCore.API.Responses;
+
+namespace SoruCevapCore.API.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ArticlesController : ControllerBase
+    {
+        private readonly SoruCevapContext _context;
+
+        public ArticlesController(SoruCevapContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Articles
+        [HttpGet]
+        public IEnumerable<Article> GetArticle()
+        {
+            return _context.Article;
+        }
+
+        [HttpGet("{page}/{pageSize}")]
+        public IActionResult GetArticle(int page=1,int pageSize = 5)
+        {
+            try
+            {
+                IQueryable<Article> query;
+                query = _context.Article.Include(x => x.Category).Include(y => y.Comment).OrderByDescending(z => z.PublishDate);
+
+                int totalCount = query.Count();
+
+                var articlesResponse = query.Skip((pageSize * (page - 1))).Take(5).ToList().Select(x => new ArticleResponse()
+                {
+
+                    Id = x.Id,
+                    Title = x.Title,
+                    ContentMain = x.ContentMain,
+                    ContentSummary = x.ContentSummary,
+                    Picture = x.Picture,
+                    ViewCount = x.ViewCount,
+                    CommentCount = x.Comment.Count,
+                    Category = new CategoryResponse() { Id = x.Category.Id, Name = x.Category.Name }
+                });
+
+                var result = new
+                {
+                    TotalCount = totalCount,
+                    Articles = articlesResponse
+
+
+                };
+                return Ok(result);
+            }
+            catch(System.Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+
+           
+            
+
+            
+        }
+
+
+
+
+
+
+        // GET: api/Articles/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetArticle([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var article = await _context.Article.FindAsync(id);
+
+            if (article == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(article);
+        }
+
+        // PUT: api/Articles/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutArticle([FromRoute] int id, [FromBody] Article article)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != article.Id)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(article).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!ArticleExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // POST: api/Articles
+        [HttpPost]
+        public async Task<IActionResult> PostArticle([FromBody] Article article)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _context.Article.Add(article);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetArticle", new { id = article.Id }, article);
+        }
+
+        // DELETE: api/Articles/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteArticle([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var article = await _context.Article.FindAsync(id);
+            if (article == null)
+            {
+                return NotFound();
+            }
+
+            _context.Article.Remove(article);
+            await _context.SaveChangesAsync();
+
+            return Ok(article);
+        }
+
+        private bool ArticleExists(int id)
+        {
+            return _context.Article.Any(e => e.Id == id);
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CATEGORİESCONTROLLER.TS:
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SoruCevapCore.API.Models;
+
+namespace SoruCevapCore.API.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class CategoriesController : ControllerBase
+    {
+        private readonly SoruCevapContext _context;
+
+        public CategoriesController(SoruCevapContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Categories
+        [HttpGet]
+        public IEnumerable<Category> GetCategory()
+        {
+            return _context.Category;
+        }
+
+        // GET: api/Categories/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetCategory([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var category = await _context.Category.FindAsync(id);
+
+            if (category == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(category);
+        }
+
+        // PUT: api/Categories/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutCategory([FromRoute] int id, [FromBody] Category category)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != category.Id)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(category).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!CategoryExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // POST: api/Categories
+        [HttpPost]
+        public async Task<IActionResult> PostCategory([FromBody] Category category)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _context.Category.Add(category);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetCategory", new { id = category.Id }, category);
+        }
+
+        // DELETE: api/Categories/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCategory([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var category = await _context.Category.FindAsync(id);
+            if (category == null)
+            {
+                return NotFound();
+            }
+
+            _context.Category.Remove(category);
+            await _context.SaveChangesAsync();
+
+            return Ok(category);
+        }
+
+        private bool CategoryExists(int id)
+        {
+            return _context.Category.Any(e => e.Id == id);
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+COMMENTSCONTROLLER.TS:
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SoruCevapCore.API.Models;
+
+namespace SoruCevapCore.API.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class CommentsController : ControllerBase
+    {
+        private readonly SoruCevapContext _context;
+
+        public CommentsController(SoruCevapContext context)
+        {
+            _context = context;
+        }
+
+        // GET: api/Comments
+        [HttpGet]
+        public IEnumerable<Comment> GetComment()
+        {
+            return _context.Comment;
+        }
+
+        // GET: api/Comments/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetComment([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var comment = await _context.Comment.FindAsync(id);
+
+            if (comment == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(comment);
+        }
+
+        // PUT: api/Comments/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutComment([FromRoute] int id, [FromBody] Comment comment)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != comment.Id)
+            {
+                return BadRequest();
+            }
+
+            _context.Entry(comment).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!CommentExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+
+        // POST: api/Comments
+        [HttpPost]
+        public async Task<IActionResult> PostComment([FromBody] Comment comment)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            _context.Comment.Add(comment);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetComment", new { id = comment.Id }, comment);
+        }
+
+        // DELETE: api/Comments/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteComment([FromRoute] int id)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var comment = await _context.Comment.FindAsync(id);
+            if (comment == null)
+            {
+                return NotFound();
+            }
+
+            _context.Comment.Remove(comment);
+            await _context.SaveChangesAsync();
+
+            return Ok(comment);
+        }
+
+        private bool CommentExists(int id)
+        {
+            return _context.Comment.Any(e => e.Id == id);
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VALUESCONTROLLER.TS:
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+
+namespace SoruCevapCore.API.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class ValuesController : ControllerBase
+    {
+        // GET api/values
+        [HttpGet]
+        public ActionResult<IEnumerable<string>> Get()
+        {
+            return new string[] { "value1", "value2" };
+        }
+
+        // GET api/values/5
+        [HttpGet("{id}")]
+        public ActionResult<string> Get(int id)
+        {
+            return "value";
+        }
+
+        // POST api/values
+        [HttpPost]
+        public void Post([FromBody] string value)
+        {
+        }
+
+        // PUT api/values/5
+        [HttpPut("{id}")]
+        public void Put(int id, [FromBody] string value)
+        {
+        }
+
+        // DELETE api/values/5
+        [HttpDelete("{id}")]
+        public void Delete(int id)
+        {
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ARTİCLE.CS:
+
+
+using System;
+using System.Collections.Generic;
+
+namespace SoruCevapCore.API.Models
+{
+    public partial class Article
+    {
+        public Article()
+        {
+            Comment = new HashSet<Comment>();
+        }
+
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string ContentSummary { get; set; }
+        public string ContentMain { get; set; }
+        public DateTime PublishDate { get; set; }
+        public string Picture { get; set; }
+        public int CategoryId { get; set; }
+        public int ViewCount { get; set; }
+
+        public Category Category { get; set; }
+        public ICollection<Comment> Comment { get; set; }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CATEGORY.CS:
+
+
+
+using System;
+using System.Collections.Generic;
+
+namespace SoruCevapCore.API.Models
+{
+    public partial class Category
+    {
+        public Category()
+        {
+            Article = new HashSet<Article>();
+        }
+
+        public int Id { get; set; }
+        public string Name { get; set; }
+
+        public ICollection<Article> Article { get; set; }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+COMMENT.CS:
+
+
+using System;
+using System.Collections.Generic;
+
+namespace SoruCevapCore.API.Models
+{
+    public partial class Comment
+    {
+        public int Id { get; set; }
+        public int ArticleId { get; set; }
+        public string Name { get; set; }
+        public string ContentMain { get; set; }
+        public DateTime PublishDate { get; set; }
+
+        public Article Article { get; set; }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SORUCEVAPCONTEXT.CS:
+
+
+
+
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+
+namespace SoruCevapCore.API.Models
+{
+    public partial class SoruCevapContext : DbContext
+    {
+        public SoruCevapContext()
+        {
+        }
+
+        public SoruCevapContext(DbContextOptions<SoruCevapContext> options)
+            : base(options)
+        {
+        }
+
+        public virtual DbSet<Article> Article { get; set; }
+        public virtual DbSet<Category> Category { get; set; }
+        public virtual DbSet<Comment> Comment { get; set; }
+
+        
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Article>(entity =>
+            {
+                entity.Property(e => e.Id).HasColumnName("id");
+
+                entity.Property(e => e.CategoryId).HasColumnName("category_id");
+
+                entity.Property(e => e.ContentMain)
+                    .IsRequired()
+                    .HasColumnName("content_main");
+
+                entity.Property(e => e.ContentSummary)
+                    .IsRequired()
+                    .HasColumnName("content_summary")
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.Picture)
+                    .HasColumnName("picture")
+                    .HasMaxLength(300);
+
+                entity.Property(e => e.PublishDate)
+                    .HasColumnName("publish_date")
+                    .HasColumnType("datetime");
+
+                entity.Property(e => e.Title)
+                    .IsRequired()
+                    .HasColumnName("title")
+                    .HasMaxLength(500);
+
+                entity.Property(e => e.ViewCount).HasColumnName("viewCount");
+
+                entity.HasOne(d => d.Category)
+                    .WithMany(p => p.Article)
+                    .HasForeignKey(d => d.CategoryId)
+                    .HasConstraintName("FK_Article_Category");
+            });
+
+            modelBuilder.Entity<Category>(entity =>
+            {
+                entity.Property(e => e.Id).HasColumnName("id");
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasColumnName("name")
+                    .HasMaxLength(100);
+            });
+
+            modelBuilder.Entity<Comment>(entity =>
+            {
+                entity.Property(e => e.Id).HasColumnName("id");
+
+                entity.Property(e => e.ArticleId).HasColumnName("article_id");
+
+                entity.Property(e => e.ContentMain)
+                    .IsRequired()
+                    .HasColumnName("content_main");
+
+                entity.Property(e => e.Name)
+                    .IsRequired()
+                    .HasColumnName("name")
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.PublishDate)
+                    .HasColumnName("publish_date")
+                    .HasColumnType("datetime");
+
+                entity.HasOne(d => d.Article)
+                    .WithMany(p => p.Comment)
+                    .HasForeignKey(d => d.ArticleId)
+                    .HasConstraintName("FK_Comment_Article");
+            });
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ARTİCLERESPONSE.CS:
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace SoruCevapCore.API.Responses
+{
+    public class ArticleResponse
+    {
+        public int Id { get; set; }
+
+        public string Title { get; set; }
+
+        public string ContentMain { get; set; }
+
+        public string ContentSummary { get; set; }
+
+        public DateTime PublishDate { get; set; }
+
+        public string Picture { get; set; }
+
+        public int ViewCount { get; set; }
+
+        public int CommentCount { get; set; }
+
+        public CategoryResponse Category { get; set; }
+
+
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CATEGORYRESPONSE.CS:
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace SoruCevapCore.API.Responses
+{
+    public class CategoryResponse
+    {
+        public int Id { get; set; }
+
+        public string Name { get; set; }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+STARTUP.CS:
+
+
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using SoruCevapCore.API.Models;
+
+namespace SoruCevapCore.API
+{
+    public class Startup
+    {
+        public Startup(IConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
+
+        public IConfiguration Configuration { get; }
+
+        // This method gets called by the runtime. Use this method to add services to the container.
+        public void ConfigureServices(IServiceCollection services)
+        {
+
+            services.AddCors(opts =>
+            {
+                opts.AddDefaultPolicy(x =>
+                {
+                    x.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+
+
+                });
+
+
+
+            });
+
+
+
+            services.AddDbContext<SoruCevapContext>(opts =>
+            {
+
+                opts.UseSqlServer(Configuration["ConnectionStrings:DefaultConnectionStrings"]);
+
+            });
+
+
+
+
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+        }
+
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+            else
+            {
+                app.UseHsts();
+            }
+            app.UseCors();
+            app.UseStaticFiles();
+            app.UseHttpsRedirection();
+            app.UseMvc();
+        }
+    }
+}
